@@ -18,12 +18,22 @@ def get_db_connection():
 
     #return the connection object
     return conn
+#FUnction to retrieve a post froom the database
+def get_post(post_id):
+   conn = get_db_connection()
+   post = conn.execute('SELECT * FROM posts WHERE id = ?', (post_id,))
+   conn.close()
+
+   if post is None:
+      abort(404)
+
+   return post
 
 
 # use the app.route() decorator to create a Flask view function called index()
 @app.route('/')
 def index():
-     #get a connection to the database
+    #get a connection to the database
     conn = get_db_connection()
     #execute a query to read all posts from the posts table in the database
     posts = conn.execute('SELECT * FROM posts').fetchall()
@@ -31,7 +41,7 @@ def index():
     conn.close()
     #send the posts to the index.html template to be displayed
     
-    return render_template('index.html', posts=posts)    
+    return render_template('index.html', posts=posts)
 
 
 # route to create a post
@@ -39,7 +49,7 @@ def index():
 def create():
     #determine if the page is being requested with a POST ir GET request
     if request.method == 'POST':
-        #get the title and content that was submitted
+       #get the title and content that was submitted
         title = request.form('title')
         content = request.form('content')
 
@@ -56,6 +66,33 @@ def create():
            conn.commit()
            conn.close()
            return redirect(url_for('index'))
-    return render_template('create.html')
+
+#create a route to edit a post. Load page with get or post method
+#pass the post id as url parameter
+@app.route('/<int:id>/edit/', method=('GET', 'POST'))
+def edit(id):
+    #get the post from the database with a select query for the post with that id
+    post = get_post(id)
+
+    #determine if the page was request with GET or POST
+    if request.method == 'POST':
+       
+       title = request.form('title')
+       content = request.form('content')
+    #IF POST, process the form data. Get the data and validate it. Update the post and redirect to the homepage
+
+    if not title:
+       flash('Title is required')
+    elif not content:
+       flash('Content is required')
+    else:
+       conn = get_db_connection
+       conn.execute('UPDATE posts SET title = ?, content = ?, WHERE id = ?', (title,content,id))
+       conn.commit()
+       conn.close()
+
+       return redirect(url_for('index'))
+    #if GET then display page
+    return render_template('edit.html', post=post)
 
 app.run(port=5008)
